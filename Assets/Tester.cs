@@ -47,6 +47,7 @@ public class Tester : MonoBehaviour
 	[WiseSerializeReferenceDrawer]
 	public Shape NPCShape;
 
+	[Space]
 	[SerializeReference]
 	[WiseSerializeReferenceDrawer]
 	public Shape[] ShapesList;

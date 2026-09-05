@@ -28,6 +28,8 @@ namespace DevLocker.Utils
 	///			   use the <see cref="WiseSerializeReferenceValidation.ClearDuplicateReferences(UnityEngine.Object)"/> in your OnValidate() function!
 	///	!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	///
+	/// GitHub: https://github.com/NibbleByte/UnityWiseSerializeReference
+	///
 	/// </summary>
 	public class WiseSerializeReferenceDrawerAttribute : PropertyAttribute
 	{

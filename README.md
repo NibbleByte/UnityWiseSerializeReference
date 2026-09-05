@@ -25,7 +25,7 @@ If you use \[[SerializeReference](https://docs.unity3d.com/6000.5/Documentation/
 ![WiseSerializeReferenceDrawer](https://github.com/NibbleByte/UnityWiseSerializeReference/blob/master/Docs/Screenshots/WiseSerializeReferenceShot.png)
 
 ## Installation
-* Download the single file directly: [WiseSerializeReferenceDrawer](https://github.com/NibbleByte/UnityWiseSerializeReference/blob/master/Assets/DevLocker/Utils/WiseSerializeReference/WiseSerializeReferenceDrawer.cs)
+* Download the single file directly: [WiseSerializeReferenceDrawer.cs](https://github.com/NibbleByte/UnityWiseSerializeReference/blob/master/Assets/DevLocker/Utils/WiseSerializeReferenceDrawer/WiseSerializeReferenceDrawer.cs)
 * [Asset Store](???)
 * [OpenUPM](???) support:
 ```

@@ -1,2 +1,2 @@
-git subtree push --prefix Assets/DevLocker/Utils/WiseSerializeReference origin upm
+git subtree push --prefix Assets/DevLocker/Utils/WiseSerializeReferenceDrawer origin upm
 pause

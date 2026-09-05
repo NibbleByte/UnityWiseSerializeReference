@@ -7,9 +7,7 @@ SerializeReference drawer that allows you to populate the property with instance
 By default \[[SerializeReference](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/SerializeReference.html)\] fields display empty data with no UI to populate it, so you can't do anything with it. You need some custom property drawer like this one to draw the interface for you.
 
 ## Usage
-Use `[WiseSerializeReferenceDrawer]` attribute next to \[[SerializeReference](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/SerializeReference.html)\] to have a "+" button drawn next to the field.
-Pressing it will ask you to select the type to be instantiated - any class that inherits or implements the target field type.
-Populated fields will display the instance type name which can be clicked to be copied or pinged if possible.
+Use `[WiseSerializeReferenceDrawer]` attribute next to \[[SerializeReference](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/SerializeReference.html)\] to have a "+" button drawn next to the field. Pressing it will ask you to select the type to be instantiated - any class that inherits or implements the target field type. Populated fields will display the instance type name which can be clicked to be copied or pinged if possible.
 
 ```C#
 [SerializeReference]
@@ -26,13 +24,13 @@ If you use \[[SerializeReference](https://docs.unity3d.com/6000.5/Documentation/
 
 ## Installation
 * Download the single file directly: [WiseSerializeReferenceDrawer.cs](https://github.com/NibbleByte/UnityWiseSerializeReference/blob/master/Assets/DevLocker/Utils/WiseSerializeReferenceDrawer/WiseSerializeReferenceDrawer.cs)
-* [Asset Store](???)
-* [OpenUPM](???) support:
+* [Asset Store](https://u3d.as/49Nz)
+* [OpenUPM](https://openupm.com/packages/devlocker.utils.wiseserializereferencedrawer) support:
 ```
 npm install -g openupm-cli
 openupm add devlocker.utils.wiseserializereferencedrawer
 ```
-[![openupm](???)](???)
+[![openupm](https://img.shields.io/npm/v/devlocker.utils.wiseserializereferencedrawer?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/devlocker.utils.wiseserializereferencedrawer/)
 
 * Github upm package - merge this to your `Packages/manifest.json`
 ```

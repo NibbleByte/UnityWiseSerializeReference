@@ -1,7 +1,7 @@
 {
     "name": "devlocker.utils.wiseserializereferencedrawer",
     "displayName": "Wise Serialize Reference Drawer",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "unity": "6000.3",
     "description": "SerializeReference drawer that allows you to populate the property with instance inheriting the given type.",
 	"category": "Tools",

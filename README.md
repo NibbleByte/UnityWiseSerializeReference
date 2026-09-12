@@ -1,4 +1,4 @@
-<img src="https://github.com/NibbleByte/UnityWiseSerializeReference/blob/master/Docs/PublishImages/Icon-160.png" width="160" align="right">
+<img src="https://raw.githubusercontent.com/NibbleByte/UnityWiseSerializeReference/refs/heads/master/Docs/PublishImages/Icon-160.png" width="160" align="right">
 
 # Wise SerializeReference Drawer
 SerializeReference drawer that allows you to populate the property with instance inheriting the given type.
@@ -20,7 +20,7 @@ If you want to customize the drawer or have this behaviour everywhere, not just 
 
 If you use \[[SerializeReference](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/SerializeReference.html)\] with lists and you want to avoid duplicated references to the same instance, use `WiseSerializeReferenceValidation.ClearDuplicateReferences(this)` in your `OnValidate()` function!
 
-![WiseSerializeReferenceDrawer](https://github.com/NibbleByte/UnityWiseSerializeReference/blob/master/Docs/Screenshots/WiseSerializeReferenceShot.png)
+![WiseSerializeReferenceDrawer](https://raw.githubusercontent.com/NibbleByte/UnityWiseSerializeReference/refs/heads/master/Docs/Screenshots/WiseSerializeReferenceShot.png)
 
 ## Installation
 * Download the single file directly: [WiseSerializeReferenceDrawer.cs](https://github.com/NibbleByte/UnityWiseSerializeReference/blob/master/Assets/DevLocker/Utils/WiseSerializeReferenceDrawer/WiseSerializeReferenceDrawer.cs)

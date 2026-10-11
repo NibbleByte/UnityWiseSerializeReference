@@ -16,6 +16,8 @@ public MyClass SomeField;
 
 ```
 
+Available types are shown in a searchable dropdown window (like the "Add Component" one). If you prefer the classic context menu, use `[WiseSerializeReferenceDrawer(useGenericMenu: true)]` or override `UseGenericMenu` in your inherited drawer.
+
 If you want to customize the drawer or have this behaviour everywhere, not just the given field (per type, not per field) have a property drawer editor that inherits `WiseSerializeReferenceBasePropertyDrawer`.
 
 If you use \[[SerializeReference](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/SerializeReference.html)\] with lists and you want to avoid duplicated references to the same instance, use `WiseSerializeReferenceValidation.ClearDuplicateReferences(this)` in your `OnValidate()` function!

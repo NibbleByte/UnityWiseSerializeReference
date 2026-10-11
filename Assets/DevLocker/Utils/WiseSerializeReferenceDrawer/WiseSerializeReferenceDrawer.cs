@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.IMGUI.Controls;
 #endif
 
 using UnityEngine;
@@ -28,11 +29,24 @@ namespace DevLocker.Utils
 	///			   use the <see cref="WiseSerializeReferenceValidation.ClearDuplicateReferences(UnityEngine.Object)"/> in your OnValidate() function!
 	///	!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	///
+	/// By default, available types are shown in a searchable dropdown window (like the "Add Component" one).
+	/// Pass "useGenericMenu: true" in the attribute's constructor to use the classic context menu instead.
+	/// 
 	/// GitHub: https://github.com/NibbleByte/UnityWiseSerializeReference
 	///
 	/// </summary>
 	public class WiseSerializeReferenceDrawerAttribute : PropertyAttribute
 	{
+		/// <summary>
+		/// If true, available types are shown in a classic context menu (GenericMenu)
+		/// instead of the searchable dropdown window (like the "Add Component" one).
+		/// </summary>
+		public readonly bool UseGenericMenu;
+
+		public WiseSerializeReferenceDrawerAttribute(bool useGenericMenu = false)
+		{
+			UseGenericMenu = useGenericMenu;
+		}
 	}
 
 
@@ -46,6 +60,9 @@ namespace DevLocker.Utils
 	/// for example <see cref="GetPropertyHeight_Custom(SerializedProperty, GUIContent)"/> and <see cref="OnGUI_Custom(Rect, SerializedProperty, GUIContent, bool)"/>
 	///
 	/// If [SerializeReference] is not present default drawer is used.
+	///
+	/// Available types are shown in a searchable dropdown (like the "Add Component" one) or in a classic context menu.
+	/// Override <see cref="UseGenericMenu"/> to choose which one (searchable dropdown by default).
 	///
 	/// ===== Example =====
 	/// [CustomPropertyDrawer(typeof(MyClass))]
@@ -70,6 +87,14 @@ namespace DevLocker.Utils
 		protected static GUIContent s_ClearContent;
 
 		private double m_TypeLabelClickTime;
+		private AdvancedDropdownState m_TypesDropdownState;
+
+		/// <summary>
+		/// If true, available types are shown in a classic context menu (<see cref="GenericMenu"/>)
+		/// instead of the searchable dropdown window (like the "Add Component" one).
+		/// Override to specify it in your inherited drawer.
+		/// </summary>
+		protected virtual bool UseGenericMenu => (attribute as WiseSerializeReferenceDrawerAttribute)?.UseGenericMenu ?? false;
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
 		{
@@ -142,17 +167,10 @@ namespace DevLocker.Utils
 					var availableTypes = TypeCache.GetTypesDerivedFrom(fieldType).ToList();
 					availableTypes.Add(fieldType);
 
+					availableTypes.RemoveAll(type => type.IsAbstract || type.ContainsGenericParameters);
 					availableTypes.Sort((a, b) => a.Name.CompareTo(b.Name));
 
-					var menu = new GenericMenu();
-					foreach(Type type in availableTypes) {
-						if (type.IsAbstract || type.ContainsGenericParameters)
-							continue;
-
-						menu.AddItem(new GUIContent(type.Name), false, OnTypeSelected, new KeyValuePair<SerializedProperty, Type>(property, type));
-					}
-
-					menu.ShowAsContext();
+					ShowTypesMenu(position, property, fieldType, availableTypes);
 				}
 
 			} else {
@@ -160,12 +178,52 @@ namespace DevLocker.Utils
 			}
 		}
 
-		private void OnTypeSelected(object obj)
+		/// <summary>
+		/// Shows the menu with available types to instantiate. Which menu is used depends on <see cref="UseGenericMenu"/>.
+		/// Override to show your own UI. Call <see cref="AssignNewInstance(SerializedObject, string, Type)"/> when a type is selected.
+		/// </summary>
+		protected virtual void ShowTypesMenu(Rect position, SerializedProperty property, Type fieldType, List<Type> availableTypes)
 		{
-			var pair = (KeyValuePair<SerializedProperty, Type>)obj;
+			// Menus invoke the callback later, outside of OnGUI, so don't hold on to the SerializedProperty itself.
+			SerializedObject serializedObject = property.serializedObject;
+			string propertyPath = property.propertyPath;
 
-			pair.Key.managedReferenceValue = Activator.CreateInstance(pair.Value);
-			pair.Key.serializedObject.ApplyModifiedProperties();
+			if (UseGenericMenu) {
+				var menu = new GenericMenu();
+				foreach (Type type in availableTypes) {
+					menu.AddItem(new GUIContent(type.Name), false, () => AssignNewInstance(serializedObject, propertyPath, type));
+				}
+
+				menu.ShowAsContext();
+
+			} else {
+				// Open under the value part of the field (after the label).
+				var dropdownRect = position;
+				dropdownRect.xMin += EditorGUIUtility.labelWidth;
+				dropdownRect.height = EditorGUIUtility.singleLineHeight;
+
+				m_TypesDropdownState ??= new AdvancedDropdownState();
+
+				var dropdown = new WiseSerializeReferenceTypesDropdown(m_TypesDropdownState, fieldType.Name, availableTypes,
+					type => AssignNewInstance(serializedObject, propertyPath, type));
+
+				dropdown.Show(dropdownRect);
+			}
+		}
+
+		/// <summary>
+		/// Creates new instance of the given type and assigns it to the managed reference property.
+		/// </summary>
+		protected static void AssignNewInstance(SerializedObject serializedObject, string propertyPath, Type type)
+		{
+			serializedObject.Update();
+
+			SerializedProperty property = serializedObject.FindProperty(propertyPath);
+			if (property == null)
+				return;
+
+			property.managedReferenceValue = Activator.CreateInstance(type);
+			serializedObject.ApplyModifiedProperties();
 		}
 
 		/// <summary>
@@ -318,6 +376,61 @@ namespace DevLocker.Utils
 			GUI.backgroundColor = prevBackground;
 
 			return clicked;
+		}
+	}
+
+	/// <summary>
+	/// Searchable dropdown (like the "Add Component" one) listing the types available for instantiation.
+	/// </summary>
+	public class WiseSerializeReferenceTypesDropdown : AdvancedDropdown
+	{
+		private class TypeItem : AdvancedDropdownItem
+		{
+			public readonly Type Type;
+
+			public TypeItem(string name, Type type) : base(name)
+			{
+				Type = type;
+			}
+		}
+
+		private readonly string m_Title;
+		private readonly IReadOnlyList<Type> m_Types;
+		private readonly Action<Type> m_OnTypeSelected;
+
+		public WiseSerializeReferenceTypesDropdown(AdvancedDropdownState state, string title, IReadOnlyList<Type> types, Action<Type> onTypeSelected)
+			: base(state)
+		{
+			m_Title = title;
+			m_Types = types;
+			m_OnTypeSelected = onTypeSelected;
+
+			minimumSize = new Vector2(220f, 0f);
+		}
+
+		protected override AdvancedDropdownItem BuildRoot()
+		{
+			var root = new AdvancedDropdownItem(m_Title);
+
+			// Types with the same name (different namespaces) get their namespace displayed to tell them apart.
+			var duplicateNames = new HashSet<string>(m_Types.GroupBy(t => t.Name).Where(g => g.Count() > 1).Select(g => g.Key));
+
+			foreach (Type type in m_Types) {
+				string name = duplicateNames.Contains(type.Name) && !string.IsNullOrEmpty(type.Namespace)
+					? $"{type.Name} ({type.Namespace})"
+					: type.Name;
+
+				root.AddChild(new TypeItem(name, type));
+			}
+
+			return root;
+		}
+
+		protected override void ItemSelected(AdvancedDropdownItem item)
+		{
+			if (item is TypeItem typeItem) {
+				m_OnTypeSelected?.Invoke(typeItem.Type);
+			}
 		}
 	}
 

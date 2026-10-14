@@ -31,7 +31,7 @@ namespace DevLocker.Utils
 	///
 	/// By default, available types are shown in a searchable dropdown window (like the "Add Component" one).
 	/// Pass "useGenericMenu: true" in the attribute's constructor to use the classic context menu instead.
-	/// 
+	///
 	/// GitHub: https://github.com/NibbleByte/UnityWiseSerializeReference
 	///
 	/// </summary>
@@ -191,7 +191,7 @@ namespace DevLocker.Utils
 			if (UseGenericMenu) {
 				var menu = new GenericMenu();
 				foreach (Type type in availableTypes) {
-					menu.AddItem(new GUIContent(type.Name), false, () => AssignNewInstance(serializedObject, propertyPath, type));
+					menu.AddItem(new GUIContent(ObjectNames.NicifyVariableName(type.Name)), false, () => AssignNewInstance(serializedObject, propertyPath, type));
 				}
 
 				menu.ShowAsContext();
@@ -417,8 +417,8 @@ namespace DevLocker.Utils
 
 			foreach (Type type in m_Types) {
 				string name = duplicateNames.Contains(type.Name) && !string.IsNullOrEmpty(type.Namespace)
-					? $"{type.Name} ({type.Namespace})"
-					: type.Name;
+					? $"{ObjectNames.NicifyVariableName(type.Name)} ({type.Namespace})"
+					: ObjectNames.NicifyVariableName(type.Name);
 
 				root.AddChild(new TypeItem(name, type));
 			}

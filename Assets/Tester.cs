@@ -27,11 +27,11 @@ public class Square : Shape
 	public float Side;
 }
 
+[Serializable]
 public class Box : Rectangle
 {
 	public float Depth;
 }
-
 
 public class Tester : MonoBehaviour
 {

@@ -32,6 +32,8 @@ namespace DevLocker.Utils
 	/// By default, available types are shown in a searchable dropdown window (like the "Add Component" one).
 	/// Pass "useGenericMenu: true" in the attribute's constructor to use the classic context menu instead.
 	///
+	/// You can omit parts of the type name from the displayed label by passing them in the attribute's constructor.
+	///
 	/// GitHub: https://github.com/NibbleByte/UnityWiseSerializeReference
 	///
 	/// </summary>
@@ -43,9 +45,21 @@ namespace DevLocker.Utils
 		/// </summary>
 		public readonly bool UseGenericMenu;
 
-		public WiseSerializeReferenceDrawerAttribute(bool useGenericMenu = false)
+		/// <summary>
+		/// Remove these sub-strings from the displayed type name.
+		/// </summary>
+		public readonly string[] OmitFromTypeName;
+
+		public WiseSerializeReferenceDrawerAttribute(params string[] omitFromTypeName)
+		{
+			UseGenericMenu = false;
+			OmitFromTypeName = omitFromTypeName;
+		}
+
+		public WiseSerializeReferenceDrawerAttribute(bool useGenericMenu = false, params string[] omitFromTypeName)
 		{
 			UseGenericMenu = useGenericMenu;
+			OmitFromTypeName = omitFromTypeName;
 		}
 	}
 
@@ -63,6 +77,8 @@ namespace DevLocker.Utils
 	///
 	/// Available types are shown in a searchable dropdown (like the "Add Component" one) or in a classic context menu.
 	/// Override <see cref="UseGenericMenu"/> to choose which one (searchable dropdown by default).
+	///
+	/// You can omit parts of the type name from the displayed label by overriding <see cref="OmitFromTypeName"/>.
 	///
 	/// ===== Example =====
 	/// [CustomPropertyDrawer(typeof(MyClass))]
@@ -95,6 +111,11 @@ namespace DevLocker.Utils
 		/// Override to specify it in your inherited drawer.
 		/// </summary>
 		protected virtual bool UseGenericMenu => (attribute as WiseSerializeReferenceDrawerAttribute)?.UseGenericMenu ?? false;
+
+		/// <summary>
+		/// Override to provide sub-strings to be removed from the displayed type name.
+		/// </summary>
+		protected virtual string[] OmitFromTypeName => (attribute as WiseSerializeReferenceDrawerAttribute)?.OmitFromTypeName ?? Array.Empty<string>();
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
 		{
@@ -283,7 +304,7 @@ namespace DevLocker.Utils
 
 		/// <summary>
 		/// Draw label with the name of the managed type.
-		/// If type name contains underscores "_", it will be truncated to the first underscore.
+		/// Use <see cref="OmitFromTypeName"/> to remove sub-strings from the displayed name.
 		/// </summary>
 		protected void DrawManagedTypeLabel(Rect typeLabelRect, SerializedProperty property, Color color, GUIStyle style = null)
 		{
@@ -305,17 +326,24 @@ namespace DevLocker.Utils
 				typeIndex++; // Start should be after the dot.
 			}
 
-			// End should be the first underscore or string length.
-			int typeEndIndex = property.managedReferenceFullTypename.IndexOf("_", typeIndex + 1) - 1;
-			if (typeEndIndex < 0) {
-				typeEndIndex = property.managedReferenceFullTypename.Length - 1;
+			// Omit the given sub-strings from the displayed type name.
+			string typeName = property.managedReferenceFullTypename.Substring(typeIndex);
+			string displayTypeName = typeName;
+			foreach (string omitSubstring in OmitFromTypeName) {
+				if (string.IsNullOrWhiteSpace(omitSubstring))
+					continue;
+
+				displayTypeName = displayTypeName.Replace(omitSubstring, "");
 			}
 
+			if (string.IsNullOrWhiteSpace(displayTypeName)) {
+				displayTypeName = typeName;
+			}
 
-			GUIContent typeName = new GUIContent(property.managedReferenceFullTypename.Substring(typeIndex, typeEndIndex - typeIndex + 1));
-			typeName.tooltip = $"Full managed type name:\n{property.managedReferenceFullTypename.Substring(assemblyIndex)}";
+			GUIContent displayTypeNameContent = new GUIContent(ObjectNames.NicifyVariableName(displayTypeName));
+			displayTypeNameContent.tooltip = $"Full managed type name:\n{property.managedReferenceFullTypename.Substring(assemblyIndex)}";
 
-			Vector2 labelSize = style.CalcSize(typeName);
+			Vector2 labelSize = style.CalcSize(displayTypeNameContent);
 			typeLabelRect.x += typeLabelRect.width - labelSize.x;
 			typeLabelRect.width = labelSize.x;
 
@@ -323,8 +351,8 @@ namespace DevLocker.Utils
 			GUI.color = color;
 
 
-			if (GUI.Button(typeLabelRect, typeName, style)) {
-				MonoScript asset = AssetDatabase.FindAssets($"t:script {property.managedReferenceFullTypename.Substring(typeIndex)}")
+			if (GUI.Button(typeLabelRect, displayTypeNameContent, style)) {
+				MonoScript asset = AssetDatabase.FindAssets($"t:script {typeName}")
 							.Select(AssetDatabase.GUIDToAssetPath)
 							.Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
 							.FirstOrDefault();
@@ -341,7 +369,7 @@ namespace DevLocker.Utils
 					GUIUtility.ExitGUI();
 
 				} else {
-					EditorGUIUtility.systemCopyBuffer = typeName.text;
+					EditorGUIUtility.systemCopyBuffer = typeName;
 					EditorWindow.focusedWindow?.ShowNotification(new GUIContent("Copied!"));
 				}
 			}

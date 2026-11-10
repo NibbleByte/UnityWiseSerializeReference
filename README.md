@@ -18,7 +18,7 @@ public MyClass SomeField;
 
 Available types are shown in a searchable dropdown window (like the "Add Component" one). If you prefer the classic context menu, use `[WiseSerializeReferenceDrawer(useGenericMenu: true)]` or override `UseGenericMenu` in your inherited drawer.
 
-To shorten the displayed type name, list the parts to remove: `[WiseSerializeReferenceDrawer("Shape")]` shows `CircleShape` as "Circle". In inherited drawers, override `OmitFromTypeName`.
+To shorten the displayed type name, list the parts to remove: `[WiseSerializeReferenceDrawer("Shape")]` shows `CircleShape` as "Circle". In inherited drawers, override the `FormatDisplayedTypeName(string)` method to customize the displayed type name.
 
 If you want to customize the drawer or have this behaviour everywhere, not just the given field (per type, not per field) have a property drawer editor that inherits `WiseSerializeReferenceBasePropertyDrawer`.
 

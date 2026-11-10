@@ -78,7 +78,7 @@ namespace DevLocker.Utils
 	/// Available types are shown in a searchable dropdown (like the "Add Component" one) or in a classic context menu.
 	/// Override <see cref="UseGenericMenu"/> to choose which one (searchable dropdown by default).
 	///
-	/// You can omit parts of the type name from the displayed label by overriding <see cref="OmitFromTypeName"/>.
+	/// To customize the displayed type name, override <see cref="FormatDisplayedTypeName(string)"/>.
 	///
 	/// ===== Example =====
 	/// [CustomPropertyDrawer(typeof(MyClass))]
@@ -111,11 +111,6 @@ namespace DevLocker.Utils
 		/// Override to specify it in your inherited drawer.
 		/// </summary>
 		protected virtual bool UseGenericMenu => (attribute as WiseSerializeReferenceDrawerAttribute)?.UseGenericMenu ?? false;
-
-		/// <summary>
-		/// Override to provide sub-strings to be removed from the displayed type name.
-		/// </summary>
-		protected virtual string[] OmitFromTypeName => (attribute as WiseSerializeReferenceDrawerAttribute)?.OmitFromTypeName ?? Array.Empty<string>();
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
 		{
@@ -185,11 +180,16 @@ namespace DevLocker.Utils
 					var assembly = AppDomain.CurrentDomain.GetAssemblies().First(a => a.FullName.StartsWith(assemblyShortName));
 					Type fieldType = assembly.GetType(typeName, throwOnError: true);
 
-					var availableTypes = TypeCache.GetTypesDerivedFrom(fieldType).ToList();
-					availableTypes.Add(fieldType);
+					var availableTypes = TypeCache.GetTypesDerivedFrom(fieldType)
+						.Where(t => !t.IsAbstract && !t.ContainsGenericParameters)
+						.Select(t => KeyValuePair.Create(t, FormatDisplayedTypeNameSafe(t.Name)))
+						.ToList();
 
-					availableTypes.RemoveAll(type => type.IsAbstract || type.ContainsGenericParameters);
-					availableTypes.Sort((a, b) => a.Name.CompareTo(b.Name));
+					if (!fieldType.IsAbstract && !fieldType.ContainsGenericParameters) {
+						availableTypes.Add(KeyValuePair.Create(fieldType, FormatDisplayedTypeNameSafe(fieldType.Name)));
+					}
+
+					availableTypes.Sort((a, b) => a.Value.CompareTo(b.Value));
 
 					ShowTypesMenu(position, property, fieldType, availableTypes);
 				}
@@ -203,7 +203,7 @@ namespace DevLocker.Utils
 		/// Shows the menu with available types to instantiate. Which menu is used depends on <see cref="UseGenericMenu"/>.
 		/// Override to show your own UI. Call <see cref="AssignNewInstance(SerializedObject, string, Type)"/> when a type is selected.
 		/// </summary>
-		protected virtual void ShowTypesMenu(Rect position, SerializedProperty property, Type fieldType, List<Type> availableTypes)
+		protected virtual void ShowTypesMenu(Rect position, SerializedProperty property, Type fieldType, List<KeyValuePair<Type, string>> availableTypes)
 		{
 			// Menus invoke the callback later, outside of OnGUI, so don't hold on to the SerializedProperty itself.
 			SerializedObject serializedObject = property.serializedObject;
@@ -211,8 +211,8 @@ namespace DevLocker.Utils
 
 			if (UseGenericMenu) {
 				var menu = new GenericMenu();
-				foreach (Type type in availableTypes) {
-					menu.AddItem(new GUIContent(ObjectNames.NicifyVariableName(type.Name)), false, () => AssignNewInstance(serializedObject, propertyPath, type));
+				foreach (var pair in availableTypes) {
+					menu.AddItem(new GUIContent(pair.Value), false, () => AssignNewInstance(serializedObject, propertyPath, pair.Key));
 				}
 
 				menu.ShowAsContext();
@@ -303,8 +303,32 @@ namespace DevLocker.Utils
 		}
 
 		/// <summary>
+		/// Override to format the displayed type name yourself.
+		/// </summary>
+		protected virtual string FormatDisplayedTypeName(string typeName)
+		{
+			string[] omitFromTypeName = (attribute as WiseSerializeReferenceDrawerAttribute)?.OmitFromTypeName ?? Array.Empty<string>();
+
+			string displayTypeName = typeName;
+			foreach (string omitSubstring in omitFromTypeName) {
+				if (string.IsNullOrWhiteSpace(omitSubstring))
+					continue;
+
+				displayTypeName = displayTypeName.Replace(omitSubstring, "");
+			}
+
+			return ObjectNames.NicifyVariableName(displayTypeName);
+		}
+
+		private string FormatDisplayedTypeNameSafe(string typeName)
+		{
+			string result = FormatDisplayedTypeName(typeName);
+			return string.IsNullOrWhiteSpace(result) ? typeName : result;
+		}
+
+		/// <summary>
 		/// Draw label with the name of the managed type.
-		/// Use <see cref="OmitFromTypeName"/> to remove sub-strings from the displayed name.
+		/// Use <see cref="FormatDisplayedTypeName(string)"/> to customize the displayed name.
 		/// </summary>
 		protected void DrawManagedTypeLabel(Rect typeLabelRect, SerializedProperty property, Color color, GUIStyle style = null)
 		{
@@ -326,21 +350,10 @@ namespace DevLocker.Utils
 				typeIndex++; // Start should be after the dot.
 			}
 
-			// Omit the given sub-strings from the displayed type name.
 			string typeName = property.managedReferenceFullTypename.Substring(typeIndex);
-			string displayTypeName = typeName;
-			foreach (string omitSubstring in OmitFromTypeName) {
-				if (string.IsNullOrWhiteSpace(omitSubstring))
-					continue;
+			string displayTypeName = FormatDisplayedTypeNameSafe(typeName);
 
-				displayTypeName = displayTypeName.Replace(omitSubstring, "");
-			}
-
-			if (string.IsNullOrWhiteSpace(displayTypeName)) {
-				displayTypeName = typeName;
-			}
-
-			GUIContent displayTypeNameContent = new GUIContent(ObjectNames.NicifyVariableName(displayTypeName));
+			GUIContent displayTypeNameContent = new GUIContent(displayTypeName);
 			displayTypeNameContent.tooltip = $"Full managed type name:\n{property.managedReferenceFullTypename.Substring(assemblyIndex)}";
 
 			Vector2 labelSize = style.CalcSize(displayTypeNameContent);
@@ -423,10 +436,10 @@ namespace DevLocker.Utils
 		}
 
 		private readonly string m_Title;
-		private readonly IReadOnlyList<Type> m_Types;
+		private readonly IReadOnlyList<KeyValuePair<Type, string>> m_Types;
 		private readonly Action<Type> m_OnTypeSelected;
 
-		public WiseSerializeReferenceTypesDropdown(AdvancedDropdownState state, string title, IReadOnlyList<Type> types, Action<Type> onTypeSelected)
+		public WiseSerializeReferenceTypesDropdown(AdvancedDropdownState state, string title, IReadOnlyList<KeyValuePair<Type, string>> types, Action<Type> onTypeSelected)
 			: base(state)
 		{
 			m_Title = title;
@@ -440,15 +453,15 @@ namespace DevLocker.Utils
 		{
 			var root = new AdvancedDropdownItem(m_Title);
 
-			// Types with the same name (different namespaces) get their namespace displayed to tell them apart.
-			var duplicateNames = new HashSet<string>(m_Types.GroupBy(t => t.Name).Where(g => g.Count() > 1).Select(g => g.Key));
+			// Types with the same formatted name (different namespaces) get their namespace and full type name displayed to tell them apart.
+			var duplicateNames = new HashSet<string>(m_Types.GroupBy(pair => pair.Value).Where(g => g.Count() > 1).Select(g => g.Key));
 
-			foreach (Type type in m_Types) {
-				string name = duplicateNames.Contains(type.Name) && !string.IsNullOrEmpty(type.Namespace)
-					? $"{ObjectNames.NicifyVariableName(type.Name)} ({type.Namespace})"
-					: ObjectNames.NicifyVariableName(type.Name);
+			foreach (var pair in m_Types) {
+				string name = duplicateNames.Contains(pair.Value) && !string.IsNullOrEmpty(pair.Key.Namespace)
+					? $"{pair.Key.Name} ({pair.Key.Namespace})"
+					: pair.Value;
 
-				root.AddChild(new TypeItem(name, type));
+				root.AddChild(new TypeItem(name, pair.Key));
 			}
 
 			return root;
